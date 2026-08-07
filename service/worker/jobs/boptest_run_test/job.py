@@ -49,6 +49,11 @@ class Job:
             return
 
         self.timeout = float(os.environ["BOPTEST_TIMEOUT"])
+        # How long to block waiting for the next request, bounding only how
+        # late check_idle_time notices that a test has gone away
+        self.message_poll_timeout = float(
+            os.environ.get("BOPTEST_MESSAGE_POLL_TIMEOUT", 1.0)
+        )
         # Avoid S3 round-trip for small, high-frequency result payloads.
         self.max_inline_result_bytes = int(
             os.environ.get("BOPTEST_MAX_INLINE_RESULT_BYTES", 1000 * 1024)
@@ -166,7 +171,7 @@ class Job:
         request_id = False
         response_channel = self.get_response_channel()
         try:
-            message = self.redis_pubsub.get_message()
+            message = self.redis_pubsub.get_message(timeout=self.message_poll_timeout)
             if message:
                 message_type = message["type"]
                 if message_type == "message":
