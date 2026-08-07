@@ -12,6 +12,7 @@ Released on xx/xx/xxxx.
 - Reduce size of unit test reference results by only storing 500 points for time trajectories.  Also enhance json testing to include tolerance and detailed failure messages.  This is for [#253](https://github.com/ibpsa/project1-boptest/issues/253).
 - Add ``bacnet/requirements.txt`` file, and change ``objectName`` in ``bacnet/example/BACpypes.ini`` from ``BopTestProxy`` to ``ExampleReadWrite``. This is for [#830](https://github.com/ibpsa/project1-boptest/issues/830).
 - Add ``'none'`` as an acceptable argument for outside temperature and solar forecast uncertainty scenario parameters, which has the same function as a ``None`` object previously (also still accepted).  This is for [#850](https://github.com/ibpsa/project1-boptest/issues/850).
+- Add an optional ``names`` argument to the ``GET kpi/{testid}`` API, and a corresponding ``names`` argument to ``KPI_Calculator.get_core_kpis`` and ``TestCase.get_kpis``, to calculate only a subset of the core KPIs.  Omitting it calculates all of them, as before.  This is useful for a controller that queries KPIs on every control step, since the peak demand KPIs are maxima over the whole test period and therefore cost more the longer the test has run.  This is for [#XXX](https://github.com/ibpsa/project1-boptest/issues/XXX).
 
 **The following changes are not backwards compatible, but do not change benchmark results:**
 
