@@ -12,6 +12,7 @@ Released on xx/xx/xxxx.
 - Reduce size of unit test reference results by only storing 500 points for time trajectories.  Also enhance json testing to include tolerance and detailed failure messages.  This is for [#253](https://github.com/ibpsa/project1-boptest/issues/253).
 - Add ``bacnet/requirements.txt`` file, and change ``objectName`` in ``bacnet/example/BACpypes.ini`` from ``BopTestProxy`` to ``ExampleReadWrite``. This is for [#830](https://github.com/ibpsa/project1-boptest/issues/830).
 - Add ``'none'`` as an acceptable argument for outside temperature and solar forecast uncertainty scenario parameters, which has the same function as a ``None`` object previously (also still accepted).  This is for [#850](https://github.com/ibpsa/project1-boptest/issues/850).
+- Keep the ``web`` service running when a request is abandoned: ``waitForStatus`` never reached its timeout because the incremented poll count was not passed to the next iteration, ``getStatus`` threw a string instead of an ``Error``, and an unhandled promise rejection terminated the node process.  This is for [#XXX](https://github.com/ibpsa/project1-boptest/issues/XXX).
 
 **The following changes are not backwards compatible, but do not change benchmark results:**
 
