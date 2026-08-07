@@ -117,7 +117,13 @@ const select = async (req, res, next) => {
     if (req.account) {
       userSub = req.account.sub
     }
-    res.json(await boptestLib.select(req.testcaseKey, userSub, req.params.async))
+    // Optional opt-in to the low-overhead simulation path for this test.
+    // Left undefined when absent, so that the worker keeps its own default.
+    let fast = undefined
+    if (req.body && typeof req.body.fast !== 'undefined') {
+      fast = (req.body.fast === true || req.body.fast === 'true' || req.body.fast === 1)
+    }
+    res.json(await boptestLib.select(req.testcaseKey, userSub, req.params.async, fast))
   } else {
     res.sendStatus(404)
   }

@@ -153,10 +153,16 @@ async function removeTestFromDB(testid) {
   await redis.del(testKey)
 }
 
-export async function select(testcaseKey, userSub, asyc) {
+export async function select(testcaseKey, userSub, asyc, fast) {
   const testid = uuidv4()
   await addTestToDB(testid, userSub)
-  await addJobToQueue("boptest_run_test", { testid, testcaseKey })
+  // `fast` is passed through only when the client asked for it, so that the
+  // worker falls back to the BOPTEST_FAST environment variable otherwise
+  const params = { testid, testcaseKey }
+  if (typeof fast !== 'undefined') {
+    params.fast = fast
+  }
+  await addJobToQueue("boptest_run_test", params)
   if (!asyc) {
     try {
       await waitForStatus(testid, "Running")
