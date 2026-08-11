@@ -31,7 +31,8 @@ class TestCase(object):
 
     def __init__(self,
                  fmupath='models/wrapped.fmu',
-                 forecast_uncertainty_params_path='forecast/forecast_uncertainty_params.json'):
+                 forecast_uncertainty_params_path='forecast/forecast_uncertainty_params.json',
+                 fast=None):
         '''Constructor.
 
         Parameters
@@ -42,9 +43,20 @@ class TestCase(object):
         forecast_uncertainty_params_path : str, optional
             Path to the JSON file containing the uncertainty parameters.
             Default is assuming a particular directory structure.
+        fast : bool, optional
+            Use the low-overhead simulation path, which steps the fmu directly
+            instead of calling pyfmi.fmu.simulate for each control step.
+            Results are unchanged.
+            Default is None, which uses the BOPTEST_FAST environment variable,
+            and False if that is not set.
 
         '''
 
+        # Resolve the fast path, which configures the FMU and logger below
+        if fast is None:
+            fast = os.environ.get('BOPTEST_FAST', '').strip().lower() \
+                   in ('1', 'true', 'yes', 'on')
+        self.fast = bool(fast)
         # Set BOPTEST version number
         with open('version.txt', 'r') as f:
             self.version = f.read()
@@ -63,17 +75,24 @@ class TestCase(object):
         self.name = self.config_json['name']
         # Load fmu
         self.fmu = load_fmu(self.fmupath)
-        self.fmu.set_log_level(7)
+        # The FMU debug log is a cost paid on every step
+        self.fmu.set_log_level(0 if self.fast else 7)
         # Configure the log, log file, and console output
         name = 'boptest_{0}'.format(self.name)
         fmt = '%(asctime)s UTC\t%(name)-20s%(levelname)s\t%(message)s'
         datefmt = '%m/%d/%Y %I:%M:%S %p'
         formatter = logging.Formatter(fmt,datefmt)
-        logging.basicConfig(filename='{0}.log'.format(name), filemode='w', level=10, format=fmt, datefmt=datefmt)
+        # DEBUG logging to file and console costs more than the simulation
+        level = logging.WARNING if self.fast else 10
+        logging.basicConfig(filename='{0}.log'.format(name), filemode='w', level=level, format=fmt, datefmt=datefmt)
         logger = logging.getLogger()
-        stream_handler = logging.StreamHandler()
-        stream_handler.setFormatter(formatter)
-        logger.addHandler(stream_handler)
+        if self.fast:
+            # basicConfig is a no-op if the root logger is already configured
+            logger.setLevel(level)
+        else:
+            stream_handler = logging.StreamHandler()
+            stream_handler.setFormatter(formatter)
+            logger.addHandler(stream_handler)
         # Get version and check is 2.0
         self.fmu_version = self.fmu.get_version()
         if self.fmu_version != '2.0':
@@ -91,6 +110,9 @@ class TestCase(object):
         # Set default fmu simulation options
         self.options = self.fmu.simulate_options()
         self.options['filter'] = self.output_names + self.input_names
+        # Cache what the fast simulation path needs
+        if self.fast:
+            self._fast_initialize()
         # Instantiate a KPI calculator for the test case
         self.cal = KPI_Calculator(testcase=self)
         # Initialize test case
@@ -146,6 +168,123 @@ class TestCase(object):
             self.u[key] = a.array('d',[])
         self.u_store = copy.deepcopy(self.u)
 
+    def _fast_initialize(self):
+        '''Cache the value references the fast simulation path reads.
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        None
+
+        '''
+
+        from pyfmi.fmi import FMI2_BOOLEAN, FMI2_REAL
+
+        # Split the filtered variables by FMI type for the bulk getters
+        self._fast_real_names = []
+        self._fast_bool_names = []
+        unsupported = []
+        for key in self.options['filter']:
+            data_type = self.fmu.get_variable_data_type(key)
+            if data_type == FMI2_BOOLEAN:
+                self._fast_bool_names.append(key)
+            elif data_type == FMI2_REAL:
+                self._fast_real_names.append(key)
+            else:
+                unsupported.append((key, data_type))
+        if unsupported:
+            raise ValueError(
+                'The fast simulation path only supports Real and Boolean '
+                'inputs and outputs, but this test case has {0}. Run without '
+                'fast=True.'.format(unsupported[:5]))
+        self._fast_real_refs = np.array(
+            [self.fmu.get_variable_valueref(key) for key in self._fast_real_names],
+            dtype=np.uint32)
+        self._fast_bool_refs = np.array(
+            [self.fmu.get_variable_valueref(key) for key in self._fast_bool_names],
+            dtype=np.uint32)
+
+    def _fast_record(self, res):
+        '''Append the current fmu state to a results dictionary.
+
+        Parameters
+        ----------
+        res: dict
+            Maps variable name to a list of values, plus a 'time' key.
+
+        Returns
+        -------
+        None
+
+        '''
+
+        res['time'].append(self.fmu.time)
+        if len(self._fast_real_refs):
+            values = self.fmu.get_real(self._fast_real_refs)
+            for key, value in zip(self._fast_real_names, values):
+                res[key].append(value)
+        if len(self._fast_bool_refs):
+            values = self.fmu.get_boolean(self._fast_bool_refs)
+            for key, value in zip(self._fast_bool_names, values):
+                res[key].append(float(value))
+
+    def _fast_simulation(self,start_time,end_time,input_object=None):
+        '''Simulates the FMU using the pyfmi fmu.do_step function.
+
+        Steps self.options['ncp'] times on the same communication grid that
+        fmu.simulate uses, so results are unchanged.
+
+        Parameters
+        ----------
+        start_time: int
+            Start time of simulation in seconds.
+        end_time: int
+            Final time of simulation in seconds.
+        input_object: pyfmi input_object, optional
+            Input object for simulation
+            Default is None
+
+        Returns
+        -------
+        res: dict
+            Results of the fmu simulation, keyed by variable name.
+
+        '''
+
+        try:
+            # Initialize the FMU on the first step, as pyfmi would
+            if self.initialize_fmu:
+                self.fmu.setup_experiment(start_time=start_time,
+                                          stop_time_defined=self.options['stop_time_defined'],
+                                          stop_time=end_time)
+                self.fmu.initialize()
+            # Set control inputs, constant over the step
+            if input_object is not None:
+                self.fmu.set(input_object[0], input_object[1][0, 1:])
+            # Reproduce pyfmi's communication grid
+            ncp = self.options['ncp']
+            h = (end_time - start_time) / ncp
+            res = {key: [] for key in ['time'] + list(self.options['filter'])}
+            # pyfmi always records the start of the interval
+            self._fast_record(res)
+            t = start_time
+            for _ in range(ncp):
+                status = self.fmu.do_step(t, h, True)
+                if status != 0:
+                    raise Exception('The FMU returned status {0} for the step '
+                                    'from {1}s to {2}s.'.format(status, t, t+h))
+                t = t + h
+                self._fast_record(res)
+        except:
+            return traceback.format_exc()
+        # Set internal fmu initialization
+        self.initialize_fmu = False
+
+        return res
+
     def __simulation(self,start_time,end_time,input_object=None):
         '''Simulates the FMU using the pyfmi fmu.simulate function.
 
@@ -176,6 +315,9 @@ class TestCase(object):
             pass
         elif (step < 30) and (step > 0):
             self.options['ncp'] = int((end_time-start_time)/step)
+        # Take the low-overhead path, on the sample rate resolved above
+        if self.fast:
+            return self._fast_simulation(start_time, end_time, input_object)
         # Simulate fmu
         try:
             res = self.fmu.simulate(start_time=start_time,
