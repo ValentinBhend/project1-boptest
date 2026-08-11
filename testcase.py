@@ -31,7 +31,8 @@ class TestCase(object):
 
     def __init__(self,
                  fmupath='models/wrapped.fmu',
-                 forecast_uncertainty_params_path='forecast/forecast_uncertainty_params.json'):
+                 forecast_uncertainty_params_path='forecast/forecast_uncertainty_params.json',
+                 warmup_interval=None):
         '''Constructor.
 
         Parameters
@@ -42,9 +43,23 @@ class TestCase(object):
         forecast_uncertainty_params_path : str, optional
             Path to the JSON file containing the uncertainty parameters.
             Default is assuming a particular directory structure.
+        warmup_interval : float, optional
+            Sample interval in seconds for the warmup simulation only.  A
+            larger value makes initialize cheaper but slightly moves the state
+            reached at start_time, and with it the reported KPIs.  Control
+            steps always use 30 s.
+            Default is None, which uses the BOPTEST_WARMUP_INTERVAL
+            environment variable, and 30 if that is not set.
 
         '''
 
+        # Communication grid for the warmup simulation only
+        if warmup_interval is None:
+            warmup_interval = os.environ.get('BOPTEST_WARMUP_INTERVAL', 30)
+        self.warmup_interval = float(warmup_interval)
+        if self.warmup_interval <= 0:
+            raise ValueError('warmup_interval must be positive, got '
+                             '{0}.'.format(self.warmup_interval))
         # Set BOPTEST version number
         with open('version.txt', 'r') as f:
             self.version = f.read()
@@ -146,7 +161,7 @@ class TestCase(object):
             self.u[key] = a.array('d',[])
         self.u_store = copy.deepcopy(self.u)
 
-    def __simulation(self,start_time,end_time,input_object=None):
+    def __simulation(self,start_time,end_time,input_object=None,interval=30):
         '''Simulates the FMU using the pyfmi fmu.simulate function.
 
         Parameters
@@ -158,6 +173,10 @@ class TestCase(object):
         input_object: pyfmi input_object, optional
             Input object for simulation
             Default is None
+        interval: float, optional
+            Sample interval in seconds.  Only the warmup simulation passes
+            anything other than the default.
+            Default is 30
 
         Returns
         -------
@@ -170,11 +189,11 @@ class TestCase(object):
         self.options['initialize'] = self.initialize_fmu
         # Set sample rate
         step = end_time - start_time
-        if step >= 30:
-            self.options['ncp'] = int((end_time-start_time)/30)
+        if step >= interval:
+            self.options['ncp'] = int((end_time-start_time)/interval)
         elif step == 0:
             pass
-        elif (step < 30) and (step > 0):
+        elif (step < interval) and (step > 0):
             self.options['ncp'] = int((end_time-start_time)/step)
         # Simulate fmu
         try:
@@ -458,7 +477,8 @@ class TestCase(object):
         self.initialize_fmu = True
         # Simulate fmu for warmup period.
         # Do not allow negative starting time to avoid confusions
-        res = self.__simulation(max(start_time-warmup_period, 0), start_time)
+        res = self.__simulation(max(start_time-warmup_period, 0), start_time,
+                                interval=self.warmup_interval)
         # Process result
         if not isinstance(res, str):
             # Get result
