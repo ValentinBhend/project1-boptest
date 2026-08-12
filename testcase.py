@@ -146,7 +146,7 @@ class TestCase(object):
             self.u[key] = a.array('d',[])
         self.u_store = copy.deepcopy(self.u)
 
-    def __simulation(self,start_time,end_time,input_object=None):
+    def __simulation(self,start_time,end_time,input_object=None,interval=30):
         '''Simulates the FMU using the pyfmi fmu.simulate function.
 
         Parameters
@@ -158,6 +158,10 @@ class TestCase(object):
         input_object: pyfmi input_object, optional
             Input object for simulation
             Default is None
+        interval: float, optional
+            Sample interval in seconds.  Only the warmup simulation passes
+            anything other than the default.
+            Default is 30
 
         Returns
         -------
@@ -170,11 +174,11 @@ class TestCase(object):
         self.options['initialize'] = self.initialize_fmu
         # Set sample rate
         step = end_time - start_time
-        if step >= 30:
-            self.options['ncp'] = int((end_time-start_time)/30)
+        if step >= interval:
+            self.options['ncp'] = int((end_time-start_time)/interval)
         elif step == 0:
             pass
-        elif (step < 30) and (step > 0):
+        elif (step < interval) and (step > 0):
             self.options['ncp'] = int((end_time-start_time)/step)
         # Simulate fmu
         try:
@@ -381,7 +385,8 @@ class TestCase(object):
 
             return status, message, payload
 
-    def initialize(self, start_time, warmup_period, end_time=np.inf):
+    def initialize(self, start_time, warmup_period, end_time=np.inf,
+                   warmup_interval=30):
         '''Initialize the test simulation.
 
         Parameters
@@ -393,6 +398,12 @@ class TestCase(object):
         end_time: int or float, optional
             Specifies a finite end time to allow the simulation to continue
             Default value is infinite.
+        warmup_interval: int or float, optional
+            Sample interval in seconds for the warmup simulation.  A larger
+            value makes the warmup cheaper but slightly moves the state
+            reached at start_time, and with it the reported KPIs.  Control
+            steps always use 30 s.
+            Default is 30, which is the behaviour of earlier versions.
 
         Returns
         -------
@@ -458,7 +469,12 @@ class TestCase(object):
         self.initialize_fmu = True
         # Simulate fmu for warmup period.
         # Do not allow negative starting time to avoid confusions
-        res = self.__simulation(max(start_time-warmup_period, 0), start_time)
+        warmup_interval = float(warmup_interval)
+        if warmup_interval <= 0:
+            raise ValueError('warmup_interval must be positive, got '
+                             '{0}.'.format(warmup_interval))
+        res = self.__simulation(max(start_time-warmup_period, 0), start_time,
+                                interval=warmup_interval)
         # Process result
         if not isinstance(res, str):
             # Get result
