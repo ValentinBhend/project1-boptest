@@ -184,6 +184,15 @@ paths:
             schema:
               type: object
               description: Optional selection parameters (implementation-specific).
+              properties:
+                fast:
+                  type: boolean
+                  default: false
+                  description: >-
+                    Request the low-overhead simulation path for this test, which steps the emulator FMU
+                    directly instead of building a simulation algorithm and result handler for every control
+                    step. The communication grid is unchanged, so measurements and KPIs are unaffected, but
+                    the FMU debug log and the framework log are quieter. Omit to use the default, which is off.
       responses:
         '200':
           description: Test case selected successfully.
