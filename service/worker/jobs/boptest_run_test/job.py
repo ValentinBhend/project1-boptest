@@ -21,6 +21,8 @@ class Job:
         self.testid = parameters.get("testid")
         self.testKey = "tests:%s" % self.testid
         self.testcaseKey = parameters.get("testcaseKey")
+        # Opt-in low-overhead simulation path, None to leave it to TestCase
+        self.fast = parameters.get("fast")
         self.keep_running = True
         # abort True will end the run loop without cleanup
         self.abort = False
@@ -75,7 +77,8 @@ class Job:
         self.s3_bucket = self.s3.Bucket(self.s3_bucket_name)
         self.s3_bucket.download_file(self.testcaseKey, self.fmu_path)
 
-        self.tc = TestCase(self.fmu_path, self.forecast_uncertainty_params_path)
+        kwargs = {} if self.fast is None else {"fast": self.fast}
+        self.tc = TestCase(self.fmu_path, self.forecast_uncertainty_params_path, **kwargs)
 
         # subscribe to messages related to this test
         self.message_handlers = {}
