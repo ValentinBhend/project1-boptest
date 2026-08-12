@@ -13,6 +13,7 @@ Released on xx/xx/xxxx.
 - Add ``bacnet/requirements.txt`` file, and change ``objectName`` in ``bacnet/example/BACpypes.ini`` from ``BopTestProxy`` to ``ExampleReadWrite``. This is for [#830](https://github.com/ibpsa/project1-boptest/issues/830).
 - Add ``'none'`` as an acceptable argument for outside temperature and solar forecast uncertainty scenario parameters, which has the same function as a ``None`` object previously (also still accepted).  This is for [#850](https://github.com/ibpsa/project1-boptest/issues/850).
 - Block on the ``redis`` subscription in the worker run loop instead of polling it without a timeout, which made an idle worker consume a full CPU core.  The wait is bounded by the new environment variable ``BOPTEST_MESSAGE_POLL_TIMEOUT``, default ``1.0`` s.  This is for [#XXX](https://github.com/ibpsa/project1-boptest/issues/XXX).
+- Keep the ``web`` service running when a request is abandoned.  ``waitForStatus`` never reached its timeout because the incremented poll count was not passed to the next iteration, ``getStatus`` threw a string instead of an ``Error``, and an unhandled promise rejection terminated the node process.  This is for [#XXX](https://github.com/ibpsa/project1-boptest/issues/XXX).
 
 **The following changes are not backwards compatible, but do not change benchmark results:**
 

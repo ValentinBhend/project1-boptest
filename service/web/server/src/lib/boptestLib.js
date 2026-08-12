@@ -181,7 +181,10 @@ export async function getStatus(testid) {
     const status = await redis.hget(testKey, "status")
     return status.toString()
   } else {
-    throw (`Cannot getStatus for testid ${testid}, because it does not exist`);
+    // Throw an Error rather than a string, so that callers and the
+    // process-wide rejection handler get a stack trace instead of a bare
+    // message
+    throw new Error(`Cannot getStatus for testid ${testid}, because it does not exist`);
   }
 }
 
@@ -193,11 +196,13 @@ export async function waitForStatus(testid, desiredStatus, count, maxCount) {
   if (currentStatus == desiredStatus) {
     return;
   } else if (count >= maxCount) {
-    throw (`Timeout waiting for test: ${testid} to reach status: ${desiredStatus}`);
+    throw new Error(`Timeout waiting for test: ${testid} to reach status: ${desiredStatus}`);
   } else {
-    // check status every 1000 miliseconds
-    await promiseTaskLater(waitForStatus, 1000, testid, desiredStatus, count, maxCount);
-    count++
+    // check status every 1000 miliseconds.
+    // The incremented count has to be the one handed to the next iteration:
+    // incrementing a local copy after awaiting left every iteration at 0, so
+    // the timeout branch above was unreachable and this polled forever.
+    await promiseTaskLater(waitForStatus, 1000, testid, desiredStatus, count + 1, maxCount);
   }
 }
 
