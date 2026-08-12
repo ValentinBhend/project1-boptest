@@ -613,7 +613,28 @@ paths:
       summary: Get KPIs for a running test
       tags:
         - Test Execution
-      description: Receive KPI values for the running test. Calculated from start time and do not include warmup periods.
+      description: >-
+        Receive KPI values for the running test. Calculated from start time and do not include warmup periods.
+        By default all core KPIs are returned. The optional `names` parameter restricts the calculation to
+        the KPIs listed, which is useful when only some of them are needed on every control step, since the
+        peak demand KPIs (`pele_tot`, `pgas_tot`, `pdih_tot`) are maxima over the whole test period and
+        therefore cost more the longer the test has run. Requesting a subset does not change the value any
+        KPI reports on a later request, because each keeps its own integration index.
+      parameters:
+        - name: names
+          in: query
+          required: false
+          description: >-
+            Core KPIs to calculate, as a comma separated list or as a repeated parameter.
+            Omit to calculate all of them.
+          schema:
+            type: array
+            items:
+              type: string
+              enum: [tdis_tot, idis_tot, ener_tot, cost_tot, emis_tot, pele_tot, pgas_tot, pdih_tot, time_rat]
+          style: form
+          explode: false
+          example: cost_tot,tdis_tot
       responses:
         '200':
           description: Successful response with KPIs.
