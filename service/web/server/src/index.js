@@ -11,6 +11,16 @@ import path from 'path'
 const app = express()
 const SERVER_PORT = process.env.BOPTEST_SERVER.split(':')[2]
 
+// An unhandled promise rejection terminates the node process, which takes the
+// whole web service down for every user over a single failed request. That is
+// reachable in normal operation: a client that abandons a /select while its
+// test is being cleaned up leaves waitForStatus polling a test that no longer
+// exists, and by then there is no caller left to catch the rejection. Log it
+// and keep serving.
+process.on('unhandledRejection', (reason) => {
+  console.error('Unhandled promise rejection:', reason)
+})
+
 // app.use(express.json())
 // It would be best to use express.json, however for now we need to support
 // non standard keywords (Infinity / -Infinity) in the json body.
