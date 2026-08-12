@@ -221,6 +221,14 @@ paths:
                 warmup_period:
                   type: number
                   description: Warmup period in seconds.
+                warmup_interval:
+                  type: number
+                  default: 30
+                  description: >-
+                    Sample interval in seconds for the warmup simulation. A larger value makes the warmup
+                    cheaper but slightly moves the state reached at the start time, and with it the reported
+                    KPIs. Control steps always use 30 s whatever this is set to. Omit for 30, which is the
+                    behaviour of earlier versions.
       responses:
         '200':
           description: Simulation initialized successfully.
