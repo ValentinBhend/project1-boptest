@@ -6,6 +6,7 @@ This module implements unit tests testcase.py.
 
 import os
 import unittest
+import numpy as np
 import pandas as pd
 import testcase
 import utilities
@@ -50,6 +51,89 @@ class Advance(unittest.TestCase, utilities.partialChecks):
         os.chdir('..')
         from testcase import TestCase
         self.testcase = TestCase(fmupath='testcases/bestest_air/models/wrapped.fmu')
+
+class WarmupInterval(unittest.TestCase, utilities.partialChecks):
+    '''Unit tests for the warmup simulation grid option.
+
+    '''
+
+    def test_default_is_thirty(self):
+        '''Test that the warmup grid is 30 s unless asked otherwise, which is
+        the behaviour of earlier BOPTEST versions.
+
+        '''
+
+        self.assertEqual(self._make().warmup_interval, 30.)
+
+    def test_argument_sets_the_grid(self):
+        '''Test that the argument sets the warmup grid.
+
+        '''
+
+        self.assertEqual(self._make(warmup_interval=900).warmup_interval, 900.)
+
+    def test_rejects_non_positive(self):
+        '''Test that a grid of zero or less is refused rather than producing a
+        division by zero deep in the simulation.
+
+        '''
+
+        for value in [0, -30]:
+            with self.assertRaises(ValueError):
+                self._make(warmup_interval=value)
+
+    def test_only_the_warmup_grid_changes(self):
+        '''Test that the option coarsens the warmup period only, and leaves
+        the test period on the mandated 30 s grid that the KPIs integrate
+        over.
+
+        '''
+
+        start_time, warmup_period, step, nsteps = 24*3600, 3600, 900, 4
+        for warmup_interval in [30, 900]:
+            case = self._make(warmup_interval=warmup_interval)
+            case.initialize(start_time, warmup_period)
+            case.set_step(step)
+            for _ in range(nsteps):
+                case.advance(u={})
+
+            times = np.array(case.y_store['time'])
+            warmup_times = times[times <= start_time]
+            test_times = times[times >= start_time]
+
+            np.testing.assert_array_equal(
+                np.unique(np.diff(warmup_times)), [warmup_interval],
+                'The warmup period should be recorded on the requested grid.')
+            np.testing.assert_array_equal(
+                np.unique(np.diff(test_times)), [30],
+                'The test period must stay on the 30 s grid whatever the '
+                'warmup grid is.')
+            self.assertEqual(test_times[0], start_time)
+            self.assertEqual(test_times[-1], start_time + nsteps*step)
+
+    def test_kpi_integration_still_starts_at_the_start_time(self):
+        '''Test that the KPI calculator excludes the warmup samples whatever
+        grid they were recorded on.  It selects them by time rather than by
+        counting samples, so a coarser warmup grid must not shift the point
+        the integration begins at.
+
+        '''
+
+        start_time, warmup_period = 24*3600, 3600
+        for warmup_interval in [30, 900]:
+            case = self._make(warmup_interval=warmup_interval)
+            case.initialize(start_time, warmup_period)
+            case.cal.initialize()
+            i = case.cal.i_last_tdis
+            self.assertTrue(case.y_store['time'][i] >= start_time)
+            self.assertTrue(case.y_store['time'][i-1] < start_time)
+
+    def _make(self, **kwargs):
+        os.chdir(os.path.join(testing_root_dir))
+        os.chdir('..')
+        from testcase import TestCase
+        return TestCase(fmupath='testcases/bestest_air/models/wrapped.fmu', **kwargs)
+
 
 if __name__ == '__main__':
     utilities.run_tests(os.path.basename(__file__))
