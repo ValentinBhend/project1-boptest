@@ -21,10 +21,10 @@ class Job:
         self.testid = parameters.get("testid")
         self.testKey = "tests:%s" % self.testid
         self.testcaseKey = parameters.get("testcaseKey")
-        # Optional log levels, None to keep TestCase's defaults
+        # Optional test case options, None to keep TestCase's defaults
         self.testcase_kwargs = {
             key: parameters[key]
-            for key in ("fmu_log_level", "log_level")
+            for key in ("direct_step", "fmu_log_level", "log_level")
             if parameters.get(key) is not None
         }
         self.keep_running = True

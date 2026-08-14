@@ -119,7 +119,7 @@ const select = async (req, res, next) => {
     }
     // Optional test case options, passed on only when the client sends them
     const options = {}
-    for (const key of ['fmu_log_level', 'log_level']) {
+    for (const key of ['direct_step', 'fmu_log_level', 'log_level']) {
       if (req.body && typeof req.body[key] !== 'undefined') {
         options[key] = req.body[key]
       }
