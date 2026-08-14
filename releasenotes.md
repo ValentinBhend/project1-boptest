@@ -15,6 +15,7 @@ Released on xx/xx/xxxx.
 - Block on the ``redis`` subscription in the worker run loop instead of polling it without a timeout, which made an idle worker consume a full CPU core.  The wait is bounded by the new ``BOPTEST_MESSAGE_POLL_TIMEOUT`` environment variable, default ``1.0`` s.  This is for [#XXX](https://github.com/ibpsa/project1-boptest/issues/XXX).
 - Keep the ``web`` service running when a request is abandoned: ``waitForStatus`` never reached its timeout because the incremented poll count was not passed to the next iteration, ``getStatus`` threw a string instead of an ``Error``, and an unhandled promise rejection terminated the node process.  This is for [#XXX](https://github.com/ibpsa/project1-boptest/issues/XXX).
 - Speed up ``get_data`` in ``data/data_manager.py``, which the KPI calculator calls on every control step, by interpolating with numpy within the data year and implementing ``interp0`` with a binary search.  Returned values are unchanged.  This is for [#859](https://github.com/ibpsa/project1-boptest/issues/859).
+- Add an optional ``names`` argument to ``GET kpi/{testid}``, ``KPI_Calculator.get_core_kpis`` and ``TestCase.get_kpis``, to calculate only a subset of the core KPIs.  Omitting it calculates all of them, as before.  This is for [#858](https://github.com/ibpsa/project1-boptest/issues/858).
 
 **The following changes are not backwards compatible, but do not change benchmark results:**
 
