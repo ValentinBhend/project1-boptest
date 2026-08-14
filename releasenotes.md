@@ -18,6 +18,7 @@ Released on xx/xx/xxxx.
 - Add an optional ``names`` argument to ``GET kpi/{testid}``, ``KPI_Calculator.get_core_kpis`` and ``TestCase.get_kpis``, to calculate only a subset of the core KPIs.  Omitting it calculates all of them, as before.  This is for [#858](https://github.com/ibpsa/project1-boptest/issues/858).
 - Add optional ``fmu_log_level`` and ``log_level`` arguments to ``POST testcases/{testcase_name}/select`` and to ``TestCase``, which set how much the emulator FMU and the test case log.  Omitting them keeps the levels of earlier versions.  This is for [#861](https://github.com/ibpsa/project1-boptest/issues/861).
 - Add an optional ``direct_step`` argument to ``POST testcases/{testcase_name}/select`` and to ``TestCase``, which steps the emulator FMU with ``do_step`` instead of calling ``pyfmi.fmu.simulate`` once per control step.  It is off by default, and the communication grid is unchanged, so only ``time_rat`` changes.  This is for [#857](https://github.com/ibpsa/project1-boptest/issues/857).
+- Add an optional ``warmup_interval`` argument to ``PUT initialize/{testid}`` and ``TestCase.initialize``, which sets the communication grid for the warmup simulation.  Omitting it keeps the 30 s grid used for control steps.  A coarser grid makes ``initialize`` cheaper and shifts reported KPIs by less than 1e-05 relative.  This is for [#860](https://github.com/ibpsa/project1-boptest/issues/860).
 
 **The following changes are not backwards compatible, but do not change benchmark results:**
 
