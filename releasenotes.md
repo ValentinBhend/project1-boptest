@@ -14,6 +14,7 @@ Released on xx/xx/xxxx.
 - Add ``'none'`` as an acceptable argument for outside temperature and solar forecast uncertainty scenario parameters, which has the same function as a ``None`` object previously (also still accepted).  This is for [#850](https://github.com/ibpsa/project1-boptest/issues/850).
 - Block on the ``redis`` subscription in the worker run loop instead of polling it without a timeout, which made an idle worker consume a full CPU core.  The wait is bounded by the new ``BOPTEST_MESSAGE_POLL_TIMEOUT`` environment variable, default ``1.0`` s.  This is for [#XXX](https://github.com/ibpsa/project1-boptest/issues/XXX).
 - Keep the ``web`` service running when a request is abandoned: ``waitForStatus`` never reached its timeout because the incremented poll count was not passed to the next iteration, ``getStatus`` threw a string instead of an ``Error``, and an unhandled promise rejection terminated the node process.  This is for [#XXX](https://github.com/ibpsa/project1-boptest/issues/XXX).
+- Speed up ``get_data`` in ``data/data_manager.py``, which the KPI calculator calls on every control step, by interpolating with numpy within the data year and implementing ``interp0`` with a binary search.  Returned values are unchanged.  This is for [#859](https://github.com/ibpsa/project1-boptest/issues/859).
 
 **The following changes are not backwards compatible, but do not change benchmark results:**
 
