@@ -473,7 +473,7 @@ class Data_Manager(object):
         z_fmu.close()
 
         # Convert any string formatted numbers to floats.
-        self.case.data = self.case.data.applymap(float)
+        self.case.data = self.case.data.astype(float)
 
     def get_data_metadata(self):
         '''Get the metadata of the test case data variables.
