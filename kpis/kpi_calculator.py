@@ -399,9 +399,9 @@ class KPI_Calculator(object):
                     pow_data = np.array(self._get_data_from_last_index(signal,self.i_last_pele))
                     df_pow_data = pd.DataFrame(index=tim_data, data=pow_data, columns=[signal])
                     df_pow_data_all = pd.concat([df_pow_data_all, df_pow_data], axis=1)
-            df_pow_data_all.index = pd.TimedeltaIndex(df_pow_data_all.index, unit='s')
+            df_pow_data_all.index = pd.to_timedelta(df_pow_data_all.index, unit='s')
             df_pow_data_all['total_demand'] = df_pow_data_all.sum(axis=1)
-            df_pow_data_all = df_pow_data_all.resample('15T').mean()/self.case._get_area()/1000.
+            df_pow_data_all = df_pow_data_all.resample('15min').mean()/self.case._get_area()/1000.
             i = df_pow_data_all['total_demand'].idxmax()
             peak = df_pow_data_all.loc[i,'total_demand']
             self.pele_tot = peak
@@ -446,9 +446,9 @@ class KPI_Calculator(object):
                     pow_data = np.array(self._get_data_from_last_index(signal,self.i_last_pgas))
                     df_pow_data = pd.DataFrame(index=tim_data, data=pow_data, columns=[signal])
                     df_pow_data_all = pd.concat([df_pow_data_all, df_pow_data], axis=1)
-            df_pow_data_all.index = pd.TimedeltaIndex(df_pow_data_all.index, unit='s')
+            df_pow_data_all.index = pd.to_timedelta(df_pow_data_all.index, unit='s')
             df_pow_data_all['total_demand'] = df_pow_data_all.sum(axis=1)
-            df_pow_data_all = df_pow_data_all.resample('15T').mean()/self.case._get_area()/1000.
+            df_pow_data_all = df_pow_data_all.resample('15min').mean()/self.case._get_area()/1000.
             i = df_pow_data_all['total_demand'].idxmax()
             peak = df_pow_data_all.loc[i,'total_demand']
             self.pgas_tot = peak
@@ -493,9 +493,9 @@ class KPI_Calculator(object):
                     pow_data = np.array(self._get_data_from_last_index(signal,self.i_last_pdih))
                     df_pow_data = pd.DataFrame(index=tim_data, data=pow_data, columns=[signal])
                     df_pow_data_all = pd.concat([df_pow_data_all, df_pow_data], axis=1)
-            df_pow_data_all.index = pd.TimedeltaIndex(df_pow_data_all.index, unit='s')
+            df_pow_data_all.index = pd.to_timedelta(df_pow_data_all.index, unit='s')
             df_pow_data_all['total_demand'] = df_pow_data_all.sum(axis=1)
-            df_pow_data_all = df_pow_data_all.resample('15T').mean()/self.case._get_area()/1000.
+            df_pow_data_all = df_pow_data_all.resample('15min').mean()/self.case._get_area()/1000.
             i = df_pow_data_all['total_demand'].idxmax()
             peak = df_pow_data_all.loc[i,'total_demand']
             self.pdih_tot = peak
